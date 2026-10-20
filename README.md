@@ -67,3 +67,7 @@ External job API imports are not configured in this version; integrate only a pr
 - Employer/company logout redirects to `/accounts/employer/login/`.
 - Logout is a POST-only action protected by Django's CSRF middleware.
 
+
+Admin Credentials 
+Mail - raghunathank154@gmail.com 
+password - husky55@K
