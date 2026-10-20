@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Saved jobs | JobSwipe{% endblock %}
+{% block content %}
+<div class="container py-4 py-lg-5">
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 mb-4">
+    <div><p class="text-primary fw-semibold small text-uppercase mb-2">Your shortlist</p><h1 class="display-6 fw-bold mb-2">Saved jobs</h1><p class="text-secondary mb-0">Keep promising roles here so you can return to them later.</p></div>
+    <a class="btn btn-primary" href="{% url 'jobs:feed' %}">Find jobs</a>
+  </div>
+  {% if bookmarks %}
+  <div class="row g-3">{% for bookmark in bookmarks %}
+    <div class="col-12 col-md-6 col-xl-4"><article class="bg-white border rounded-4 p-3 h-100 d-flex flex-column">
+      <p class="small text-secondary mb-2">{{ bookmark.job.company.name }}</p><h2 class="h5 fw-bold">{{ bookmark.job.title }}</h2><p class="text-secondary small">📍 {{ bookmark.job.location }} · {{ bookmark.job.get_work_mode_display }}</p>
+      <p class="small text-secondary flex-grow-1">{{ bookmark.job.description|truncatechars:140 }}</p>
+      <div class="d-grid gap-2"><a class="btn btn-outline-primary" href="{% url 'jobs:detail' bookmark.job.pk %}">View details</a>
+        <form method="post" action="{% url 'jobs:bookmark' bookmark.job.pk %}">{% csrf_token %}<input type="hidden" name="next" value="saved"><button class="btn btn-outline-secondary w-100" type="submit">Remove from saved</button></form>
+        {% if bookmark.job.is_open %}<a class="btn btn-primary" href="{{ bookmark.job.application_url }}" target="_blank" rel="noopener noreferrer">Open application ↗</a>{% else %}<span class="badge text-bg-secondary">No longer open</span>{% endif %}
+      </div>
+    </article></div>
+  {% endfor %}</div>
+  {% else %}
+  <section class="text-center bg-white border rounded-4 p-5"><h2 class="h4 fw-bold">Your shortlist is empty</h2><p class="text-secondary">Save a job from its card or details page to keep it handy.</p><a class="btn btn-primary" href="{% url 'jobs:feed' %}">Explore jobs</a></section>
+  {% endif %}
+</div>
+{% endblock %}

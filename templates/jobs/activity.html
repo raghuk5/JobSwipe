@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}My Activity | JobSwipe{% endblock %}
+{% block content %}
+<div class="container py-4 py-lg-5">
+  <div class="mb-4"><p class="text-primary fw-semibold small text-uppercase mb-2">Your job search</p><h1 class="display-6 fw-bold mb-2">My Activity</h1><p class="text-secondary mb-0">Your saved roles and recent decisions in one place.</p></div>
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-4"><div class="bg-white border rounded-4 p-3 h-100"><p class="small text-secondary mb-1">Interested</p><p class="display-6 fw-bold mb-0">{{ interested_count }}</p></div></div>
+    <div class="col-6 col-lg-4"><div class="bg-white border rounded-4 p-3 h-100"><p class="small text-secondary mb-1">Skipped</p><p class="display-6 fw-bold mb-0">{{ skipped_count }}</p></div></div>
+    <div class="col-12 col-lg-4"><div class="bg-white border rounded-4 p-3 h-100"><p class="small text-secondary mb-1">Saved</p><p class="display-6 fw-bold mb-0">{{ saved_count }}</p><a class="small" href="{% url 'jobs:saved' %}">View saved jobs</a></div></div>
+  </div>
+  <div class="d-flex justify-content-between align-items-center gap-2 mb-3"><h2 class="h5 fw-bold mb-0">Recent decisions</h2><a class="small" href="{% url 'jobs:history' %}">View full history</a></div>
+  {% if swipes %}
+  <div class="bg-white border rounded-4 overflow-hidden mb-4">
+    {% for swipe in swipes %}
+    <div class="p-3 d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 {% if not forloop.last %}border-bottom{% endif %}">
+      <div><div class="fw-semibold">{{ swipe.job.title }}</div><div class="small text-secondary">{{ swipe.job.company.name }} · {{ swipe.job.location }}</div><div class="small text-secondary">{{ swipe.updated_at|date:"d M Y, H:i" }}</div></div>
+      <div class="d-flex align-items-center gap-2"><span class="badge {% if swipe.direction == 'interested' %}text-bg-success{% else %}text-bg-secondary{% endif %}">{{ swipe.get_direction_display }}</span><a class="btn btn-sm btn-outline-primary" href="{% url 'jobs:detail' swipe.job.pk %}">Details</a></div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}<section class="bg-white border rounded-4 p-4 text-center mb-4"><p class="text-secondary mb-0">No decisions yet. Browse jobs to get started.</p></section>{% endif %}
+  <h2 class="h5 fw-bold mb-3">Recently saved</h2>
+  {% if bookmarks %}
+  <div class="row g-3">{% for bookmark in bookmarks %}
+    <div class="col-12 col-md-6 col-xl-4"><article class="bg-white border rounded-4 p-3 h-100"><h3 class="h6 fw-bold">{{ bookmark.job.title }}</h3><p class="small text-secondary">{{ bookmark.job.company.name }} · {{ bookmark.job.location }}</p><a href="{% url 'jobs:detail' bookmark.job.pk %}">View job</a></article></div>
+  {% endfor %}</div>
+  {% else %}<p class="text-secondary">No saved jobs yet. <a href="{% url 'jobs:feed' %}">Explore opportunities</a>.</p>{% endif %}
+</div>
+{% endblock %}

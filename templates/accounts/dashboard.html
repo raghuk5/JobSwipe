@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Dashboard | JobSwipe{% endblock %}
+{% block content %}
+<div class="container py-4 py-lg-5">
+  <section class="dashboard-panel mb-4">
+    <span class="badge rounded-pill text-bg-primary mb-3">JobSwipe</span>
+    <h1 class="display-6 fw-bold">Welcome{% if request.user.full_name %}, {{ request.user.full_name }}{% endif %}!</h1>
+    <p class="text-secondary fs-5 mt-2">Complete your profile and preferences so future job listings can be matched to your goals.</p>
+    <div class="row g-3 mt-2">
+      <div class="col-12 col-md-6"><div class="border rounded-4 p-3 h-100"><h2 class="h5 fw-bold">Your profile</h2><p class="small text-secondary">Qualification, skills, experience and optional resume.</p><a class="btn btn-primary btn-sm" href="{% url 'accounts:profile' %}">Edit profile</a></div></div>
+      <div class="col-12 col-md-6"><div class="border rounded-4 p-3 h-100"><h2 class="h5 fw-bold">Job preferences</h2><p class="small text-secondary">Roles, locations, salary, work mode and employment type.</p><a class="btn btn-primary btn-sm" href="{% url 'accounts:preferences' %}">Set preferences</a></div></div>
+    </div>
+  </section>
+  <div class="row g-3">
+    <div class="col-12 col-lg-6"><section class="dashboard-panel h-100"><h2 class="h5 fw-bold">Profile summary</h2><p><strong>Qualification:</strong> {{ profile.qualification|default:"Not added yet" }}</p><p><strong>Experience:</strong> {{ profile.experience_years }} years</p><p class="mb-0"><strong>Skills:</strong> {{ profile.skills|default:"Not added yet"|truncatechars:160 }}</p></section></div>
+    <div class="col-12 col-lg-6"><section class="dashboard-panel h-100"><h2 class="h5 fw-bold">Preference summary</h2><p><strong>Roles:</strong> {{ preferences.preferred_roles|default:"Not set"|truncatechars:100 }}</p><p><strong>Locations:</strong> {{ preferences.preferred_locations|default:"Not set"|truncatechars:100 }}</p><p class="mb-0"><strong>Work mode:</strong> {{ preferences.get_work_mode_display }}</p></section></div>
+  </div>
+</div>
+{% endblock %}

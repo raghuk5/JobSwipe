@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ job.title }} | JobSwipe{% endblock %}
+{% block content %}
+<div class="container py-4 py-lg-5" style="max-width:900px">
+  <a class="text-decoration-none" href="{% url 'jobs:feed' %}">← Back to jobs</a>
+  <article class="dashboard-panel mt-3">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3">
+      <div><div class="small text-secondary mb-2">{{ job.company.name }} {% if job.company.is_verified %}<span class="text-primary">✓ Verified</span>{% endif %}</div><h1 class="display-6 fw-bold">{{ job.title }}</h1><p class="text-secondary mb-0">{{ job.location }} · {{ job.get_work_mode_display }} · {{ job.get_employment_type_display }}</p></div>
+      {% if existing_swipe and existing_swipe.direction == 'skipped' %}
+        <span class="badge text-bg-secondary align-self-start">You skipped this job</span>
+      {% elif existing_swipe and existing_swipe.direction == 'interested' %}
+        <div class="d-flex flex-column align-items-start gap-2">
+          <span class="badge {% if existing_swipe.interest_status == 'pending' %}text-bg-warning{% elif existing_swipe.interest_status == 'accepted' %}text-bg-success{% else %}text-bg-secondary{% endif %}">{{ existing_swipe.get_interest_status_display }}</span>
+          {% if existing_swipe.interest_status == 'not_applicable' %}
+            <form method="post" action="{% url 'jobs:swipe' job.pk %}">{% csrf_token %}<button class="btn btn-primary" type="submit" name="direction" value="interested">Send interest to company</button></form>
+          {% else %}
+            <a class="btn btn-primary flex-shrink-0" href="{% url 'jobs:interests' %}">Track my interest</a>
+          {% endif %}
+        </div>
+      {% else %}
+        <div class="d-flex gap-2 flex-shrink-0">
+          <form method="post" action="{% url 'jobs:swipe' job.pk %}">{% csrf_token %}<button class="btn btn-outline-danger" type="submit" name="direction" value="skipped">← Skip</button></form>
+          <form method="post" action="{% url 'jobs:swipe' job.pk %}">{% csrf_token %}<button class="btn btn-success" type="submit" name="direction" value="interested">Interested →</button></form>
+        </div>
+      {% endif %}
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+      <span class="badge text-bg-primary">{{ job.match_score }}% preference match</span>
+      <form method="post" action="{% url 'jobs:bookmark' job.pk %}" class="m-0">{% csrf_token %}<input type="hidden" name="next" value="detail"><button class="btn btn-sm btn-outline-secondary" type="submit">{% if is_bookmarked %}★ Remove saved job{% else %}☆ Save job{% endif %}</button></form>
+    </div>
+    <hr class="my-4">
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-3"><div class="border rounded-3 p-3 h-100"><div class="small text-secondary">Experience</div><strong>{{ job.get_experience_level_display }}</strong></div></div>
+      <div class="col-6 col-md-3"><div class="border rounded-3 p-3 h-100"><div class="small text-secondary">Posted</div><strong>{{ job.posted_at|date:"d M Y" }}</strong></div></div>
+      <div class="col-6 col-md-3"><div class="border rounded-3 p-3 h-100"><div class="small text-secondary">Salary</div><strong>{% if job.minimum_salary or job.maximum_salary %}{% if job.minimum_salary %}₹{{ job.minimum_salary|floatformat:0 }}{% else %}—{% endif %}{% if job.maximum_salary %} – ₹{{ job.maximum_salary|floatformat:0 }}{% endif %}<span class="small fw-normal">/yr</span>{% else %}Not disclosed{% endif %}</strong></div></div>
+      <div class="col-6 col-md-3"><div class="border rounded-3 p-3 h-100"><div class="small text-secondary">Closing date</div><strong>{% if job.closing_date %}{{ job.closing_date|date:"d M Y" }}{% else %}Not specified{% endif %}</strong></div></div>
+    </div>
+    <h2 class="h5 fw-bold">About the role</h2><div class="mb-4">{{ job.description|linebreaks }}</div>
+    {% if job.responsibilities %}<h2 class="h5 fw-bold">Responsibilities</h2><div class="mb-4">{{ job.responsibilities|linebreaks }}</div>{% endif %}
+    {% if job.required_skills %}<h2 class="h5 fw-bold">Required skills</h2><p>{{ job.required_skills }}</p>{% endif %}
+    {% if job.company.description %}<hr class="my-4"><h2 class="h5 fw-bold">About {{ job.company.name }}</h2><div>{{ job.company.description|linebreaks }}</div>{% endif %}
+    <div class="d-flex flex-column flex-sm-row gap-2 mt-4">
+      <a class="btn btn-primary" href="{{ job.application_url }}" target="_blank" rel="noopener noreferrer">Open official application page ↗</a>
+      {% if job.company.website %}<a class="btn btn-outline-secondary" href="{{ job.company.website }}" target="_blank" rel="noopener noreferrer">Company website ↗</a>{% endif %}
+    </div>
+  </article>
+</div>
+{% endblock %}

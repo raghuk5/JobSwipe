@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Decision history | JobSwipe{% endblock %}
+{% block content %}
+<div class="container py-4 py-lg-5">
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 mb-4">
+    <div><p class="text-primary fw-semibold small text-uppercase mb-2">Your job search</p><h1 class="display-6 fw-bold mb-2">Decision history</h1><p class="text-secondary mb-0">Review jobs you marked as interested or skipped.</p></div>
+    <a class="btn btn-primary" href="{% url 'jobs:feed' %}">Find jobs</a>
+  </div>
+  <form method="get" class="bg-white border rounded-4 p-3 mb-4 d-flex flex-column flex-sm-row align-items-sm-end gap-3">
+    <div class="flex-grow-1"><label for="direction" class="form-label small fw-semibold">Decision</label><select class="form-select" id="direction" name="direction"><option value="">All decisions</option>{% for value,label in directions %}<option value="{{ value }}" {% if selected_direction == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <button class="btn btn-primary" type="submit">Filter history</button><a class="btn btn-outline-secondary" href="{% url 'jobs:history' %}">Clear</a>
+  </form>
+  {% if swipes %}
+  <div class="row g-3">
+    {% for swipe in swipes %}
+    <div class="col-12 col-md-6 col-xl-4">
+      <article class="bg-white border rounded-4 p-3 h-100 d-flex flex-column">
+        <div class="d-flex justify-content-between gap-2 align-items-start mb-2"><span class="badge {% if swipe.direction == 'interested' %}text-bg-success{% else %}text-bg-secondary{% endif %}">{{ swipe.get_direction_display }}</span><span class="small text-secondary">{{ swipe.updated_at|date:"d M Y, H:i" }}</span></div>
+        <h2 class="h5 fw-bold">{{ swipe.job.title }}</h2><p class="text-secondary mb-2">{{ swipe.job.company.name }}</p><p class="small text-secondary">📍 {{ swipe.job.location }}</p>
+        <div class="mt-auto d-grid gap-2"><a class="btn btn-outline-primary" href="{% url 'jobs:detail' swipe.job.pk %}">View job details</a>{% if swipe.direction == 'interested' %}<a class="btn btn-primary" href="{% url 'jobs:interests' %}">Track interest status</a>{% endif %}</div>
+      </article>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <section class="text-center bg-white border rounded-4 p-5"><h2 class="h4 fw-bold">No swipe history yet</h2><p class="text-secondary">When you skip a job or mark interest, your decision will appear here.</p><a class="btn btn-primary" href="{% url 'jobs:feed' %}">Explore jobs</a></section>
+  {% endif %}
+</div>
+{% endblock %}
