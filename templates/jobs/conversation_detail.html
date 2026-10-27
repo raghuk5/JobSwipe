@@ -1,3 +1,237 @@
 {% extends "base.html" %}
 {% block title %}Chat | JobSwipe{% endblock %}
-{% block content %}<div class="container py-4" style="max-width:850px"><a href="{% url 'jobs:conversations' %}" class="text-decoration-none">← All conversations</a><section class="dashboard-panel mt-3"><h1 class="h4 fw-bold mb-1">{{ conversation.swipe.job.title }}</h1><p class="text-secondary">{{ conversation.swipe.job.company.name }} · {% if is_candidate %}Company recruitment team{% else %}{{ conversation.swipe.user.full_name|default:conversation.swipe.user.email }}{% endif %}</p><div class="border rounded-3 p-3 mb-3" style="min-height:240px;max-height:55vh;overflow-y:auto" aria-live="polite">{% for message in messages_list %}<div class="mb-3 {% if message.sender_id == request.user.id %}text-end{% endif %}"><div class="small text-secondary">{% if message.sender_id == request.user.id %}You{% else %}{{ message.sender.full_name|default:message.sender.email }}{% endif %} · {{ message.created_at|date:"d M Y, H:i" }}</div><div class="d-inline-block text-start rounded-3 p-3 {% if message.sender_id == request.user.id %}bg-primary text-white{% else %}bg-light border{% endif %}" style="max-width:90%;white-space:pre-wrap;overflow-wrap:anywhere">{{ message.body }}</div></div>{% empty %}<p class="text-secondary">Conversation started. Send a message to discuss the role.</p>{% endfor %}</div><form method="post">{% csrf_token %}<label for="id_body" class="form-label fw-semibold">Message</label>{{ form.body }}{% for error in form.body.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}<button type="submit" class="btn btn-primary mt-2">Send message</button></form></section></div>{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width:850px">
+    <a href="{% url 'jobs:conversations' %}" class="text-decoration-none">
+        &larr; All conversations
+    </a>
+
+    <section class="dashboard-panel mt-3 p-3 p-md-4">
+        <h1 class="h4 fw-bold mb-1">
+            {{ conversation.swipe.job.title }}
+        </h1>
+
+        <p class="text-secondary">
+            {{ conversation.swipe.job.company.name }}
+            &middot;
+            {% if is_candidate %}
+                Company recruitment team
+            {% else %}
+                {{ conversation.swipe.user.full_name|default:conversation.swipe.user.email }}
+            {% endif %}
+        </p>
+
+        <div
+            id="chat-messages"
+            class="border rounded-3 p-3 mb-3"
+            style="min-height:240px;max-height:55vh;overflow-y:auto"
+            aria-live="polite"
+            aria-label="Conversation messages"
+        >
+            {% for message in messages_list %}
+                <div
+                    class="mb-3 {% if message.sender_id == request.user.id %}text-end{% endif %}"
+                    data-message-id="{{ message.id }}"
+                >
+                    <div class="small text-secondary">
+                        {% if message.sender_id == request.user.id %}
+                            You
+                        {% else %}
+                            {{ message.sender.full_name|default:message.sender.email }}
+                        {% endif %}
+                        &middot;
+                        {{ message.created_at|date:"d M Y, H:i" }}
+                    </div>
+
+                    <div
+                        class="d-inline-block text-start rounded-3 p-3
+                        {% if message.sender_id == request.user.id %}
+                            bg-primary text-white
+                        {% else %}
+                            bg-light border
+                        {% endif %}"
+                        style="max-width:90%;white-space:pre-wrap;overflow-wrap:anywhere"
+                    >{{ message.body }}</div>
+                </div>
+            {% empty %}
+                <p id="chat-empty-state" class="text-secondary">
+                    Conversation started. Send a message to discuss the role.
+                </p>
+            {% endfor %}
+        </div>
+
+        <div id="chat-status" class="small text-secondary mb-2" role="status">
+            Connecting to live chat...
+        </div>
+
+        <form
+            id="chat-form"
+            method="post"
+            data-conversation-id="{{ conversation.id }}"
+            data-current-user-id="{{ request.user.id }}"
+        >
+            {% csrf_token %}
+
+            <label for="{{ form.body.id_for_label }}" class="form-label fw-semibold">
+                Message
+            </label>
+
+            {{ form.body }}
+
+            {% for error in form.body.errors %}
+                <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+
+            <button id="chat-send" type="submit" class="btn btn-primary mt-2">
+                Send message
+            </button>
+
+            <div class="small text-secondary mt-2">
+                Your messages are saved to your conversation.
+            </div>
+        </form>
+    </section>
+</div>
+
+<script>
+(() => {
+    const form = document.getElementById("chat-form");
+    const messages = document.getElementById("chat-messages");
+    const status = document.getElementById("chat-status");
+    const sendButton = document.getElementById("chat-send");
+    const input = document.getElementById("{{ form.body.id_for_label|escapejs }}");
+
+    if (!form || !messages || !status || !sendButton || !input) {
+        return;
+    }
+
+    const conversationId = form.dataset.conversationId;
+    const currentUserId = Number(form.dataset.currentUserId);
+
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const socketUrl =
+        `${protocol}//${window.location.host}/ws/jobs/conversations/${conversationId}/`;
+
+    let socket = null;
+
+    function scrollToLatest() {
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function appendMessage(message) {
+        // Prevent duplicate rendering if a message is delivered twice.
+        if (message.id !== undefined &&
+            messages.querySelector(`[data-message-id="${message.id}"]`)) {
+            return;
+        }
+
+        const emptyState = document.getElementById("chat-empty-state");
+        if (emptyState) {
+            emptyState.remove();
+        }
+
+        const row = document.createElement("div");
+        row.className = "mb-3";
+        if (Number(message.sender_id) === currentUserId) {
+            row.classList.add("text-end");
+        }
+
+        if (message.id !== undefined) {
+            row.dataset.messageId = message.id;
+        }
+
+        const metadata = document.createElement("div");
+        metadata.className = "small text-secondary";
+        metadata.textContent =
+            `${Number(message.sender_id) === currentUserId
+                ? "You"
+                : message.sender_name} · ${message.created_at}`;
+
+        const body = document.createElement("div");
+        body.className = "d-inline-block text-start rounded-3 p-3 " +
+            (Number(message.sender_id) === currentUserId
+                ? "bg-primary text-white"
+                : "bg-light border");
+
+        body.style.cssText =
+            "max-width:90%;white-space:pre-wrap;overflow-wrap:anywhere";
+        body.textContent = message.body;
+
+        row.append(metadata, body);
+        messages.appendChild(row);
+        scrollToLatest();
+    }
+
+    function connectWebSocket() {
+        socket = new WebSocket(socketUrl);
+
+        socket.addEventListener("open", () => {
+            status.textContent = "Live chat connected.";
+            status.className = "small text-success mb-2";
+        });
+
+        socket.addEventListener("message", (event) => {
+            let data;
+
+            try {
+                data = JSON.parse(event.data);
+            } catch {
+                return;
+            }
+
+            if (data.type === "chat.message") {
+                appendMessage(data);
+            } else if (data.type === "chat.error") {
+                status.textContent = data.message;
+                status.className = "small text-danger mb-2";
+            }
+        });
+
+        socket.addEventListener("close", () => {
+            status.textContent =
+                "Live chat disconnected. You can still send using the form.";
+            status.className = "small text-warning mb-2";
+        });
+
+        socket.addEventListener("error", () => {
+            status.textContent =
+                "Could not connect to live chat. The normal form is available.";
+            status.className = "small text-warning mb-2";
+        });
+    }
+
+    form.addEventListener("submit", (event) => {
+        // Keep the existing Django POST fallback when WebSocket is unavailable.
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const body = input.value.trim();
+        if (!body) {
+            input.focus();
+            return;
+        }
+
+        if (body.length > 4000) {
+            status.textContent = "Messages must be 4000 characters or fewer.";
+            status.className = "small text-danger mb-2";
+            return;
+        }
+
+        socket.send(JSON.stringify({
+            type: "chat.message",
+            body: body
+        }));
+
+        input.value = "";
+        input.focus();
+    });
+
+    scrollToLatest();
+    connectWebSocket();
+})();
+</script>
+{% endblock %}
