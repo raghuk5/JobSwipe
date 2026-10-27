@@ -74,6 +74,13 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
         )
 
     async def chat_message(self, event):
+        # If the recipient currently has this conversation open, mark the
+        # incoming message as read. The conversation list then reflects that
+        # change on its next unread-count refresh.
+        current_user = self.scope["user"]
+        if event["sender_id"] != current_user.pk:
+            await self.mark_message_read(event["id"], current_user.pk)
+
         await self.send_json({
             "type": "chat.message",
             "id": event["id"],
@@ -82,6 +89,15 @@ class ConversationConsumer(AsyncJsonWebsocketConsumer):
             "sender_name": event["sender_name"],
             "created_at": event["created_at"],
         })
+
+    @database_sync_to_async
+    def mark_message_read(self, message_id, user_id):
+        Message.objects.filter(
+            pk=message_id,
+            conversation_id=self.conversation_id,
+        ).exclude(sender_id=user_id).filter(read_at__isnull=True).update(
+            read_at=timezone.now()
+        )
 
     @database_sync_to_async
     def can_access_conversation(self, user_id, conversation_id):

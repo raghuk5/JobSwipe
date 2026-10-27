@@ -9,6 +9,7 @@ urlpatterns = [
     path("activity/", views.activity_view, name="activity"),
     path("interests/", views.candidate_interests_view, name="interests"),
     path("conversations/", views.conversation_list_view, name="conversations"),
+    path("conversations/unread-counts/", views.conversation_unread_counts_view, name="conversation_unread_counts"),
     path("conversations/<int:conversation_id>/", views.conversation_detail_view, name="conversation_detail"),
     path("employer/", views.employer_dashboard_view, name="employer_dashboard"),
     path("employer/jobs/new/", views.employer_job_create_view, name="employer_job_create"),

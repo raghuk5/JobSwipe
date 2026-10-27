@@ -1,8 +1,8 @@
 from django.contrib import messages
 from django.db import transaction
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
-from django.http import FileResponse, Http404, HttpResponseForbidden, HttpResponseNotAllowed
+from django.db.models import Count, Q
+from django.http import FileResponse, Http404, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -409,8 +409,26 @@ def _conversation_queryset_for(user):
 
 @login_required
 def conversation_list_view(request):
-    conversations = _conversation_queryset_for(request.user).order_by("-updated_at")
+    conversations = _conversation_queryset_for(request.user).annotate(
+        unread_count=Count(
+            "messages",
+            filter=Q(messages__read_at__isnull=True) & ~Q(messages__sender=request.user),
+        )
+    ).order_by("-updated_at")
     return render(request, "jobs/conversation_list.html", {"conversations": conversations})
+
+
+@login_required
+@require_http_methods(["GET"])
+def conversation_unread_counts_view(request):
+    conversations = _conversation_queryset_for(request.user).annotate(
+        unread_count=Count(
+            "messages",
+            filter=Q(messages__read_at__isnull=True) & ~Q(messages__sender=request.user),
+        )
+    ).values("id", "unread_count")
+    counts = {str(row["id"]): row["unread_count"] for row in conversations}
+    return JsonResponse({"counts": counts, "total": sum(counts.values())})
 
 
 @login_required

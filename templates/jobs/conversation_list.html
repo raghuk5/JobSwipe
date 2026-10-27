@@ -1,4 +1,64 @@
 {% extends "base.html" %}
 {% block title %}Conversations | JobSwipe{% endblock %}
-{% block content %}<div class="container py-4 py-lg-5"><h1 class="display-6 fw-bold">Conversations</h1><p class="text-secondary">Private messages are available only for accepted job interests.</p>
-{% for conversation in conversations %}<a class="dashboard-panel d-block text-decoration-none text-reset mb-3" href="{% url 'jobs:conversation_detail' conversation.pk %}"><div class="d-flex justify-content-between gap-3"><div><h2 class="h5 fw-bold mb-1">{{ conversation.swipe.job.title }}</h2><p class="text-secondary mb-1">{{ conversation.swipe.job.company.name }}</p>{% if request.user.role == 'employer' %}<p class="small text-secondary mb-0">Candidate: {{ conversation.swipe.user.full_name|default:conversation.swipe.user.email }}</p>{% else %}<p class="small text-secondary mb-0">Company team: {{ conversation.swipe.job.company.name }}</p>{% endif %}</div><span class="align-self-center">Open chat →</span></div></a>{% empty %}<div class="dashboard-panel text-secondary">No conversations are available yet. A conversation opens after a company accepts your interest.</div>{% endfor %}</div>{% endblock %}
+{% block content %}
+<div class="container py-4 py-lg-5">
+    <h1 class="display-6 fw-bold">Conversations</h1>
+    <p class="text-secondary">Private messages are available only for accepted job interests.</p>
+    <div id="conversation-list" data-counts-url="{% url 'jobs:conversation_unread_counts' %}">
+    {% for conversation in conversations %}
+        <a class="dashboard-panel d-block text-decoration-none text-reset mb-3 conversation-card" href="{% url 'jobs:conversation_detail' conversation.pk %}" data-conversation-id="{{ conversation.pk }}">
+            <div class="d-flex justify-content-between gap-3">
+                <div>
+                    <h2 class="h5 fw-bold mb-1">{{ conversation.swipe.job.title }}</h2>
+                    <p class="text-secondary mb-1">{{ conversation.swipe.job.company.name }}</p>
+                    {% if request.user.role == 'employer' %}
+                        <p class="small text-secondary mb-0">Candidate: {{ conversation.swipe.user.full_name|default:conversation.swipe.user.email }}</p>
+                    {% else %}
+                        <p class="small text-secondary mb-0">Company team: {{ conversation.swipe.job.company.name }}</p>
+                    {% endif %}
+                </div>
+                <div class="align-self-center d-flex align-items-center gap-2">
+                    <span class="badge rounded-pill bg-danger unread-badge {% if not conversation.unread_count %}d-none{% endif %}" aria-label="{{ conversation.unread_count }} unread messages">{{ conversation.unread_count }}</span>
+                    <span>Open chat →</span>
+                </div>
+            </div>
+        </a>
+    {% empty %}
+        <div class="dashboard-panel text-secondary">No conversations are available yet. A conversation opens after a company accepts your interest.</div>
+    {% endfor %}
+    </div>
+</div>
+<script>
+(() => {
+    const list = document.getElementById("conversation-list");
+    if (!list) return;
+    const endpoint = list.dataset.countsUrl;
+
+    async function refreshUnreadCounts() {
+        try {
+            const response = await fetch(endpoint, {
+                headers: {"X-Requested-With": "XMLHttpRequest"},
+                credentials: "same-origin",
+                cache: "no-store"
+            });
+            if (!response.ok) return;
+            const data = await response.json();
+            list.querySelectorAll(".conversation-card").forEach((card) => {
+                const id = card.dataset.conversationId;
+                const count = Number((data.counts || {})[id] || 0);
+                let badge = card.querySelector(".unread-badge");
+                if (!badge) return;
+                badge.textContent = count > 99 ? "99+" : String(count);
+                badge.classList.toggle("d-none", count < 1);
+                badge.setAttribute("aria-label", `${count} unread messages`);
+            });
+        } catch (_) {
+            // Keep the server-rendered counts if a background refresh fails.
+        }
+    }
+
+    refreshUnreadCounts();
+    window.setInterval(refreshUnreadCounts, 5000);
+})();
+</script>
+{% endblock %}
